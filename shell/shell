@@ -1,0 +1,22 @@
+#! /usr/bin/env python3
+
+import os, sys, time
+
+ibuf = os.read(0,100)
+while len(ibuf):
+    sbuf = ibuf.decode().split()
+    p0sbuf = ""
+    os.write(1,f">$".encode())
+    if len(sbuf) > 0:
+        p0sbuf = sbuf[0]
+
+    if p0sbuf == "hello":
+        os.write(1,f"{p0sbuf}\n".encode())
+    elif p0sbuf == "exit":
+        os.write(1,f"Youre out of here\n".encode())
+        sys.exit(1)
+    else:
+        os.write(1,f"'{p0sbuf}' is a command which is not recognized\n".encode())
+    os.write(1,f">$".encode())
+    ibuf = os.read(0, 100)
+        
