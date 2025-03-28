@@ -1,22 +1,63 @@
 #! /usr/bin/env python3
 
-import os, sys, time
+import os, sys, re, time
 
-ibuf = os.read(0,100)
-while len(ibuf):
-    sbuf = ibuf.decode().split()
-    p0sbuf = ""
-    os.write(1,f">$".encode())
-    if len(sbuf) > 0:
-        p0sbuf = sbuf[0]
+def runPr(cmd):
+    for path in re.split(":", os.environ['PATH']):
+        program = os.path.join(path, cmd[0])
+        try:
+            os.execve(program, cmd, os.environ)
+        except FileNotFoundError:
+            pass
 
-    if p0sbuf == "hello":
-        os.write(1,f"{p0sbuf}\n".encode())
-    elif p0sbuf == "exit":
-        os.write(1,f"Youre out of here\n".encode())
+    os.write(2,("Command : '%s' is not recognized an internal or external command\n" % cmd[0]).encode())
+    sys.exit(1)
+    
+def changedir(pathName):
+    try:
+        os.chdir(pathName)
+    except FileNotFoundError:
+        os.write(1, f" file {pathName} not found \n".encode())
+
+def crPr(cmd):
+    rc = os.fork()
+    if rc < 0:
         sys.exit(1)
+    elif rc == 0:
+        runPr(cmd)
     else:
-        os.write(1,f"'{p0sbuf}' is a command which is not recognized\n".encode())
-    os.write(1,f">$".encode())
-    ibuf = os.read(0, 100)
+        os.wait()
         
+def main():
+    sys.stdout.write(" >& ")
+    sys.stdout.flush()
+    ibuf = os.read(0,100)
+
+    while len(ibuf):
+        os.write(1, (os.environ["PS1"]).encode())
+        os.write(1, "\n".encode())
+        sbuf = ibuf.decode().split()
+        sbuffer = ""
+        p0sbuf = ""
+
+        if len(sbuf) > 0:
+            p0sbuf = sbuf[0]
+
+        if p0sbuf == "echo": #just joining the entirety of the split sbuffer cmd
+            sbuffer = sbuf[1:]
+            sbuffer = ' '.join(sbuffer)
+            os.write(1,f"{sbuffer}\n".encode())
+        elif p0sbuf == "cd" and len(sbuf) == 2: # handles switching directories
+            changedir(sbuf[1])
+            os.write(1, (os.getcwd()).encode())
+        elif p0sbuf == "pwd": # handles printing pwd
+            os.write(1,(os.getcwd()).encode())
+        elif p0sbuf == "exit": #handles leaving the shell
+            os.write(1,f"Youre out of here\n".encode())
+            sys.exit(1)
+        else:
+            crPr(sbuf)
+        sys.stdout.write(" &> ")
+        sys.stdout.flush()
+        ibuf = os.read(0, 100)
+main()
